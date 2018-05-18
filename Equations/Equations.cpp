@@ -3,13 +3,14 @@
 
 #include "stdafx.h"
 #include "Equations.h"
+#include <CommCtrl.h>
 
 #include "../LuaLib/LuaSrc/lua.hpp"
 
-extern "C"
-{
-#include "../LuaLib//LuaSrc/lauxlib.h"
-}
+//extern "C"
+//{
+//#include "../LuaLib//LuaSrc/lauxlib.h"
+//}
 
 #define MAX_LOADSTRING 100
 
@@ -23,6 +24,8 @@ ATOM				MyRegisterClass(HINSTANCE hInstance);
 BOOL				InitInstance(HINSTANCE, int);
 LRESULT CALLBACK	WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
+
+void CreateListControl(HINSTANCE);
 
 int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -49,9 +52,9 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 
 	hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_EQUATIONS));
 
-	lua_State* ls = luaL_newstate();
-	
-	luaL_openlibs(ls);
+	//lua_State* ls = luaL_newstate();
+	//
+	//luaL_openlibs(ls);
 
 
 
@@ -68,6 +71,30 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 	return (int) msg.wParam;
 }
 
+//void CreateListControl(HINSTANCE instance)
+//{
+//	INITCOMMONCONTROLSEX icex;           // Structure for control initialization.
+//	icex.dwICC = ICC_LISTVIEW_CLASSES;
+//	InitCommonControlsEx(&icex);
+//
+//	RECT rcClient;                       // The parent window's client area.
+//
+//	//GetClientRect(, &rcClient);
+//
+//	// Create the list-view window in report view with label editing enabled.
+//	HWND hWndListView = CreateWindow(WC_LISTVIEW,
+//		L"",
+//		WS_CHILD | LVS_REPORT | LVS_EDITLABELS,
+//		0, 0,
+//		rcClient.right - rcClient.left,
+//		rcClient.bottom - rcClient.top,
+//		hwndParent,
+//		(HMENU)IDM_CODE_SAMPLES,
+//		g_hInst,
+//		NULL);
+//
+//	return (hWndListView);
+//}
 
 
 //
@@ -126,6 +153,37 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    return TRUE;
 }
 
+int CALLBACK CompareFunc(LPARAM lParam1, LPARAM lParam2, LPARAM lParamSort)
+{
+	return -1;
+}
+
+LRESULT CALLBACK ListViewProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
+{
+
+	switch (msg)
+	{
+	case LVM_INSERTITEM:
+		int x;
+		x = 1;
+		break;
+	case LVN_COLUMNCLICK:
+		int y;
+		y = 0;
+		break;
+	}
+
+
+
+	return DefWindowProc(hwnd, msg, wParam, lParam);
+
+	//WNDPROC* wp;
+	//wp = (WNDPROC*)(::GetWindowLongPtr(hwnd, GWL_WNDPROC));
+	//return ::CallWindowProc(*wp, hwnd, msg, wParam, lParam);
+	//return 0;
+}
+HWND lstView;
+
 //
 //  FUNCTION: WndProc(HWND, UINT, WPARAM, LPARAM)
 //
@@ -142,8 +200,70 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	PAINTSTRUCT ps;
 	HDC hdc;
 
+
 	switch (message)
 	{
+	//case LVN_COLUMNCLICK:
+	//{
+
+	//	NMLISTVIEW* pListView = (NMLISTVIEW*)lParam;
+	//	ListView_SortItems(lstView, CompareFunc, pListView);
+
+	//	break;
+	//}
+	case WM_CREATE:
+
+		RECT rcClient;
+		
+		GetClientRect(hWnd, &rcClient);
+
+		lstView = CreateWindow(WC_LISTVIEW,
+			L"malksdjf",
+			WS_CHILD | LV_VIEW_DETAILS | LVS_REPORT | WS_VISIBLE, 0, 0,
+			rcClient.right - rcClient.left,
+			rcClient.bottom - rcClient.top,
+			hWnd, (HMENU)1001, hInst, NULL);
+
+		//SetWindowLongPtr(lstView, GWL_WNDPROC, (LPARAM)&ListViewProc);
+
+		SendMessage(lstView, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_FULLROWSELECT, LVS_EX_FULLROWSELECT);
+
+		LVCOLUMN lvc;
+		lvc.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM;
+		lvc.iSubItem = 0;
+		lvc.pszText = L"First Column";
+		lvc.cx = 100;
+		lvc.fmt = LVCFMT_LEFT;
+
+		if (ListView_InsertColumn(hWnd, 0, &lvc) == -1)
+			return -1;
+
+		SendMessage(lstView, LVM_INSERTCOLUMN, 0, (LPARAM)&lvc);
+		lvc.pszText = L"Second Column";
+		SendMessage(lstView, LVM_INSERTCOLUMN, 1, (LPARAM)&lvc);
+
+		LVITEM templateItem;
+		templateItem.mask = LVIF_TEXT;
+		templateItem.cchTextMax = 256;
+		templateItem.iItem = 0;
+		templateItem.iSubItem = 0;
+		templateItem.pszText = L"first column text";
+
+		SendMessage(lstView, LVM_INSERTITEM, 0, (LPARAM)&templateItem);
+
+		templateItem.iSubItem = 1;
+		templateItem.pszText = L"Second column text";
+		SendMessage(lstView, LVM_SETITEM, 0, (LPARAM)&templateItem);
+
+
+
+
+		//LVITEM blah;
+
+		//ListView_SetItem(lstView, &blah);
+		SetWindowSubclass(lstView, ListViewProc, 0, 0);
+		break;
+
 	case WM_COMMAND:
 		wmId    = LOWORD(wParam);
 		wmEvent = HIWORD(wParam);
