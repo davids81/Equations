@@ -4,6 +4,7 @@
 #include "stdafx.h"
 #include "Equations.h"
 #include <CommCtrl.h>
+#include <string.h>
 
 #include "../LuaLib/LuaSrc/lua.hpp"
 
@@ -153,9 +154,22 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    return TRUE;
 }
 
+bool forward = true;
 int CALLBACK CompareFunc(LPARAM lParam1, LPARAM lParam2, LPARAM lParamSort)
 {
-	return -1;
+	const wchar_t* first = (const wchar_t*)lParam1;
+	const wchar_t* second = ( const wchar_t*)lParam2;
+	if (forward)
+	{
+		forward = false;
+		return wcscmp(first, second);
+	}
+	else
+	{
+		forward = true;
+		return wcscmp(second, first);
+	}
+
 }
 
 LRESULT CALLBACK ListViewProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
@@ -184,6 +198,15 @@ LRESULT CALLBACK ListViewProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam,
 }
 HWND lstView;
 
+struct blah
+{
+	wchar_t* first;
+	wchar_t* second;
+};
+
+blah* row1;
+blah* row2;
+
 //
 //  FUNCTION: WndProc(HWND, UINT, WPARAM, LPARAM)
 //
@@ -203,33 +226,56 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 	switch (message)
 	{
-	//case LVN_COLUMNCLICK:
-	//{
+	case WM_NOTIFY:
+	{
+		LPNMHDR str = (LPNMHDR)lParam;
+		if (str->code == LVN_COLUMNCLICK && str->idFrom == 1001)
+		{
+			LPNMLISTVIEW info = (LPNMLISTVIEW)lParam;
+			ListView_SortItems(info->hdr.hwndFrom, CompareFunc, lParam);
+		}
 
-	//	NMLISTVIEW* pListView = (NMLISTVIEW*)lParam;
-	//	ListView_SortItems(lstView, CompareFunc, pListView);
-
-	//	break;
-	//}
+		switch (((LPNMHDR)lParam)->code)
+		{
+		case LVN_GETDISPINFO:
+			NMLVDISPINFO* plvdi = (NMLVDISPINFO*)lParam;
+			switch (plvdi->item.iItem)
+			{
+			case 0:
+				plvdi->item.pszText = ((blah*)plvdi->item.lParam)->second;
+			case 1:
+				plvdi->item.pszText = ((blah*)plvdi->item.lParam)->second;
+			}
+		}
+	}
+	break;
 	case WM_CREATE:
+
+		row1 = (blah*)malloc(sizeof(blah));
+		row2 = (blah*)malloc(sizeof(blah));
+
+		row1->first = L"row 1 col 1 text";
+		row1->second = L"row 1 col 2 text";
+
+		row2->first = L"row 2 col 1 text";
+		row2->second = L"row 2 col 2 text";
+		
 
 		RECT rcClient;
 		
 		GetClientRect(hWnd, &rcClient);
 
-		lstView = CreateWindow(WC_LISTVIEW,
-			L"malksdjf",
+		lstView = CreateWindowW(WC_LISTVIEW,
+			L"EquationsListView",
 			WS_CHILD | LV_VIEW_DETAILS | LVS_REPORT | WS_VISIBLE, 0, 0,
 			rcClient.right - rcClient.left,
 			rcClient.bottom - rcClient.top,
 			hWnd, (HMENU)1001, hInst, NULL);
-
-		//SetWindowLongPtr(lstView, GWL_WNDPROC, (LPARAM)&ListViewProc);
-
 		SendMessage(lstView, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_FULLROWSELECT, LVS_EX_FULLROWSELECT);
 
 		LVCOLUMN lvc;
 		lvc.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM;
+		lvc.pszText = LPSTR_TEXTCALLBACK;
 		lvc.iSubItem = 0;
 		lvc.pszText = L"First Column";
 		lvc.cx = 100;
@@ -243,25 +289,21 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		SendMessage(lstView, LVM_INSERTCOLUMN, 1, (LPARAM)&lvc);
 
 		LVITEM templateItem;
-		templateItem.mask = LVIF_TEXT;
+		templateItem.mask = LVIF_TEXT | LVIF_PARAM;
 		templateItem.cchTextMax = 256;
 		templateItem.iItem = 0;
 		templateItem.iSubItem = 0;
 		templateItem.pszText = L"first column text";
+		templateItem.lParam = (LPARAM)row1;
 
 		SendMessage(lstView, LVM_INSERTITEM, 0, (LPARAM)&templateItem);
 
-		templateItem.iSubItem = 1;
-		templateItem.pszText = L"Second column text";
-		SendMessage(lstView, LVM_SETITEM, 0, (LPARAM)&templateItem);
+		templateItem.pszText = L"second item first Column";
+		templateItem.lParam = (LPARAM)row2;
+		templateItem.iItem = 1;
+		templateItem.iSubItem = 0;
+		ListView_InsertItem(lstView, &templateItem);
 
-
-
-
-		//LVITEM blah;
-
-		//ListView_SetItem(lstView, &blah);
-		SetWindowSubclass(lstView, ListViewProc, 0, 0);
 		break;
 
 	case WM_COMMAND:
