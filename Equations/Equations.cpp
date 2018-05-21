@@ -229,23 +229,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_NOTIFY:
 	{
 		LPNMHDR str = (LPNMHDR)lParam;
-		if (str->code == LVN_COLUMNCLICK && str->idFrom == 1001)
-		{
-			LPNMLISTVIEW info = (LPNMLISTVIEW)lParam;
-			ListView_SortItems(info->hdr.hwndFrom, CompareFunc, lParam);
-		}
-
 		switch (((LPNMHDR)lParam)->code)
 		{
 		case LVN_GETDISPINFO:
+		{
 			NMLVDISPINFO* plvdi = (NMLVDISPINFO*)lParam;
-			switch (plvdi->item.iItem)
-			{
-			case 0:
-				plvdi->item.pszText = ((blah*)plvdi->item.lParam)->second;
-			case 1:
-				plvdi->item.pszText = ((blah*)plvdi->item.lParam)->second;
+			plvdi->item.pszText = ((blah*)plvdi->item.lParam)->second;
+		}
+		break;
+		case LVN_COLUMNCLICK:
+			if (str->idFrom == 1001) {
+				LPNMLISTVIEW info = (LPNMLISTVIEW)lParam;
+				ListView_SortItems(info->hdr.hwndFrom, CompareFunc, lParam);
 			}
+			break;
 		}
 	}
 	break;
