@@ -53,10 +53,34 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 
 	hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_EQUATIONS));
 
-	//lua_State* ls = luaL_newstate();
-	//
-	//luaL_openlibs(ls);
+	lua_State* ls = luaL_newstate();
+	
+	luaL_openlibs(ls);
 
+
+
+	int err = 
+	luaL_loadstring(ls, "if x > y then return x else return y end");
+
+	err = lua_pcall(ls, 0, 0, 0);
+	// here we can now get the variables of the loaded string
+
+	lua_pushinteger(ls, 1);
+	lua_setglobal(ls, "x");
+	lua_pushinteger(ls, 2);
+	lua_setglobal(ls, "y");
+
+	int top = lua_gettop(ls);
+
+	err = lua_pcall(ls, 0, 0, 0);
+
+	top = lua_gettop(ls);
+
+	double val = lua_tonumber(ls, -1);
+
+
+	
+	top = lua_gettop(ls);
 
 
 	// Main message loop:
