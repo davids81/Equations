@@ -28,6 +28,53 @@ INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
 
 void CreateListControl(HINSTANCE);
 
+char* pLuaText = "if x > y then return x else return y end";
+void* pLuaByteCode = NULL;
+size_t byteSize;
+
+typedef struct {
+	size_t *len;
+	char **data;
+} BS_DESCRIP;
+
+int scriptMemoryWriter(lua_State* ls, const void* p, size_t sz, void* ud)
+{
+	BS_DESCRIP* bd = (BS_DESCRIP*)ud;
+	char* newData = (char*)realloc(*(bd->data), (*(bd->len)) + sz);
+
+	if (newData)
+	{
+		memcpy(newData + (*(bd->len)), p, sz);
+		*(bd->data) = newData;
+		*(bd->len) += sz;
+
+	}
+	else {
+		free(newData);
+
+		return 1;
+	}
+
+	return 0;
+}
+const char* reader(lua_State *L, void *data, size_t* sz)
+{
+	BS_DESCRIP* bd = (BS_DESCRIP*)data;
+	*sz = *(bd->len);
+	return *(bd->data);
+
+	//*sz = byteSize;
+	//if (byteSize == 0)
+	//{
+	//	return NULL;
+	//}
+	//else
+	//{
+	//	byteSize -= byteSize;
+	//	return (const char*)pLuaByteCode;
+	//}
+}
+
 int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
                      _In_ LPTSTR    lpCmdLine,
@@ -57,30 +104,66 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 	
 	luaL_openlibs(ls);
 
+	char* bytecode = 0L;
+	size_t bytecode_len = 0;
+	BS_DESCRIP bd = { &bytecode_len, &bytecode };
+
+	int err = luaL_loadstring(ls, pLuaText);
+	err = lua_dump(ls, (lua_Writer)scriptMemoryWriter, &bd, 0);
+	lua_pop(ls, 1);
+	//err = lua_load(ls, (lua_Reader)reader, &bd, "chunk1", NULL);
+	err = luaL_loadbuffer(ls, bytecode, bytecode_len, "somename");
+
+	int t = lua_gettop(ls);
 
 
-	int err = 
-	luaL_loadstring(ls, "if x > y then return x else return y end");
-
-	err = lua_pcall(ls, 0, 0, 0);
-	// here we can now get the variables of the loaded string
-
-	lua_pushinteger(ls, 1);
+	//luaL_loadbuffer(ls, pLuaByteCode, sizeof(pLuaByteCode), "blah");
+	lua_pushnumber(ls, 5);
 	lua_setglobal(ls, "x");
-	lua_pushinteger(ls, 2);
+
+	lua_pushnumber(ls, 10);
 	lua_setglobal(ls, "y");
 
-	int top = lua_gettop(ls);
 
-	err = lua_pcall(ls, 0, 0, 0);
+	err = lua_pcall(ls, 0, LUA_MULTRET, 0);
 
-	top = lua_gettop(ls);
+	int top;
+	double val;
+	switch (err)
+	{
+	case LUA_OK:
+		top = lua_gettop(ls);
 
-	double val = lua_tonumber(ls, -1);
+		val = lua_tonumber(ls, -1);
+
+		break;
+	case LUA_ERRRUN:
+		printf("run time error");
+		break;
+	case LUA_ERRERR:
+		printf("error error");
+		break;
+	case LUA_ERRMEM:
+		printf("error memory");
+		break;
+	case LUA_ERRGCMM:
+		printf("garbage collection error");
+		break;
+	}
+	// here we can now get the variables of the loaded string
+
+	//lua_pushinteger(ls, 1);
+	//lua_setglobal(ls, "x");
+	//lua_pushinteger(ls, 2);
+	//lua_setglobal(ls, "y");
+
+	//int top = lua_gettop(ls);
+
+	//err = lua_pcall(ls, 0, 0, 0);
+
 
 
 	
-	top = lua_gettop(ls);
 
 
 	// Main message loop:
