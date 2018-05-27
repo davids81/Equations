@@ -8,10 +8,11 @@
 
 #include "../LuaLib/LuaSrc/lua.hpp"
 
-//extern "C"
-//{
-//#include "../LuaLib//LuaSrc/lauxlib.h"
-//}
+struct blah
+{
+	wchar_t* first;
+	wchar_t* second;
+};
 
 #define MAX_LOADSTRING 100
 
@@ -125,7 +126,7 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 	lua_setglobal(ls, "y");
 
 
-	err = lua_pcall(ls, 0, LUA_MULTRET, 0);
+	err = lua_pcall(ls, 0, /*LUA_MULTRET*/1, 0);
 
 	int top;
 	double val;
@@ -262,20 +263,42 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 }
 
 bool forward = true;
+bool f2 = true;
 int CALLBACK CompareFunc(LPARAM lParam1, LPARAM lParam2, LPARAM lParamSort)
 {
-	const wchar_t* first = (const wchar_t*)lParam1;
-	const wchar_t* second = ( const wchar_t*)lParam2;
-	if (forward)
+	LPNMLISTVIEW viewInfo = (LPNMLISTVIEW)lParamSort;
+	blah* p1 = (blah*)lParam1;
+	blah* p2 = (blah*)lParam2;
+
+	if (viewInfo->iSubItem == 0)
 	{
-		forward = false;
-		return wcscmp(first, second);
+		if (forward)
+		{
+			forward = false;
+			return wcscmp(p1->first, p2->first);
+		}
+		else
+		{
+			forward = true;
+			return wcscmp(p2->first, p1->first);
+		}
 	}
 	else
 	{
-		forward = true;
-		return wcscmp(second, first);
+		if (f2)
+		{
+			f2 = false;
+			return wcscmp(p1->second, p2->second);
+		}
+		else
+		{
+			f2 = true;
+			return wcscmp(p2->second, p1->second);
+		}
+
 	}
+
+
 
 }
 
@@ -304,12 +327,7 @@ LRESULT CALLBACK ListViewProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam,
 	//return 0;
 }
 HWND lstView;
-
-struct blah
-{
-	wchar_t* first;
-	wchar_t* second;
-};
+HWND eqNameTextbox;
 
 blah* row1;
 blah* row2;
@@ -347,6 +365,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		case LVN_COLUMNCLICK:
 			if (str->idFrom == 1001) {
 				LPNMLISTVIEW info = (LPNMLISTVIEW)lParam;
+				
 				ListView_SortItems(info->hdr.hwndFrom, CompareFunc, lParam);
 			}
 			break;
@@ -373,7 +392,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			L"EquationsListView",
 			WS_CHILD | LV_VIEW_DETAILS | LVS_REPORT | WS_VISIBLE, 0, 0,
 			rcClient.right - rcClient.left,
-			rcClient.bottom - rcClient.top,
+			rcClient.bottom - rcClient.top - 100,
 			hWnd, (HMENU)1001, hInst, NULL);
 		SendMessage(lstView, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_FULLROWSELECT, LVS_EX_FULLROWSELECT);
 
@@ -397,16 +416,31 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		templateItem.cchTextMax = 256;
 		templateItem.iItem = 0;
 		templateItem.iSubItem = 0;
-		templateItem.pszText = L"first column text";
+		templateItem.pszText = row1->first;
 		templateItem.lParam = (LPARAM)row1;
 
 		SendMessage(lstView, LVM_INSERTITEM, 0, (LPARAM)&templateItem);
 
-		templateItem.pszText = L"second item first Column";
+		templateItem.pszText = row2->first;
 		templateItem.lParam = (LPARAM)row2;
 		templateItem.iItem = 1;
 		templateItem.iSubItem = 0;
 		ListView_InsertItem(lstView, &templateItem);
+
+		ListView_SetBkColor(lstView, 355);
+
+		eqNameTextbox = CreateWindow(
+			WC_BUTTON, 
+			L"putingraphbutton", 
+			WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON, 
+			rcClient.right - 50, 
+			rcClient.bottom - 25, 
+			50, 
+			25, 
+			hWnd, 
+			NULL, 
+			hInst,
+			NULL);
 
 		break;
 
