@@ -29,7 +29,7 @@ INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
 
 void CreateListControl(HINSTANCE);
 //"x = 1 \n y = 1 \n 
-char* pLuaText = "if x > y then return x else return y end";
+char* pLuaText = "function plus1 (va) return va + 1 end if x > y then return plus1(x) else return y end";
 void* pLuaByteCode = NULL;
 size_t byteSize;
 
@@ -155,18 +155,10 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 	
 	luaL_openlibs(ls);
 
-
 	int err;
 	err = luaL_dostring(ls, userVars);
 	err = luaL_dostring(ls, sysVars);
 
-
-	//PrintUserVariables(ls);
-
-	lua_pushnumber(ls, 1);
-	lua_setglobal(ls, "yy");
-
-	//PrintUserVariables(ls);
 	char* bytecode = 0L;
 	size_t bytecode_len = 0;
 	BS_DESCRIP bd = { &bytecode_len, &bytecode };
@@ -181,14 +173,14 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 
 	err = luaL_loadstring(ls, pLuaText);
 	err = lua_dump(ls, (lua_Writer)scriptMemoryWriter, &bd, 0);
-	//lua_pop(ls, 1);
+	lua_pop(ls, 1);
 	
 	lua_getglobal(ls, "uservariables");
 	lua_pushnil(ls);
 	while (lua_next(ls, -2) != 0)
 	{
 		const char* varName = lua_tostring(ls, -2);
-		if (strcmp(varName, "x"))
+		if (strcmp(varName, "x") == 0)
 		{
 			lua_pushnumber(ls, 10);
 		}
@@ -203,7 +195,7 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 	lua_pop(ls, 1);
 
 	err = luaL_dostring(ls, "uservariables = nil");
-	err = luaL_dostring(ls, userVars);
+	//err = luaL_dostring(ls, userVars);
 	//PrintSysVariables(ls);
 	err = luaL_loadbuffer(ls, bytecode, bytecode_len, "somename");
 
