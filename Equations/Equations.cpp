@@ -28,7 +28,7 @@ LRESULT CALLBACK	WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
 
 void CreateListControl(HINSTANCE);
-
+//"x = 1 \n y = 1 \n 
 char* pLuaText = "if x > y then return x else return y end";
 void* pLuaByteCode = NULL;
 size_t byteSize;
@@ -76,6 +76,56 @@ const char* reader(lua_State *L, void *data, size_t* sz)
 	//}
 }
 
+char* userVars =
+"local U={} "
+"_G[\"uservariables\"]=U "
+"local function trace1(t,k,v) "
+"    U[k]=true "
+"    rawset(t,k,v) "
+"end "
+"setmetatable(_G, { __index = trace1 })";
+
+char* sysVars =
+"local S={} "
+"_G[\"systemvariables\"]=S "
+"for k in pairs(_G) do S[k]=true end";
+
+void PrintUserVariables(lua_State* ls)
+{
+	//lua_getglobal(ls, "uservariables");
+	
+	lua_pushglobaltable(ls);
+	lua_pushnil(ls);
+	while (lua_next(ls, -2) != 0)
+	{
+		const char* s = lua_tostring(ls, -2);
+		OutputDebugStringA(s);
+		OutputDebugStringA("\n");
+		const char* tn1 = lua_typename(ls, lua_type(ls, -2));
+		const char* tn2 = lua_typename(ls, lua_type(ls, -1));
+		//OutputDebugStringA(tn1);
+		lua_pop(ls, 1);
+	}
+	OutputDebugStringA("\n");
+}
+
+void PrintSysVariables(lua_State* ls)
+{
+	//lua_rawgeti(ls, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS);
+	lua_getglobal(ls, "uservariables");
+	//lua_pushglobaltable(ls);
+	lua_pushnil(ls);
+	while (lua_next(ls, -2) != 0)
+	{
+		const char* s = lua_tostring(ls, -2);
+		OutputDebugStringA(s);
+		OutputDebugStringA("\n");
+		lua_pop(ls, 1);
+	}
+	lua_pop(ls, 1);
+	OutputDebugStringA("\n");
+}
+
 int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
                      _In_ LPTSTR    lpCmdLine,
@@ -105,18 +155,67 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 	
 	luaL_openlibs(ls);
 
+
+	int err;
+	err = luaL_dostring(ls, userVars);
+	err = luaL_dostring(ls, sysVars);
+
+
+	//PrintUserVariables(ls);
+
+	lua_pushnumber(ls, 1);
+	lua_setglobal(ls, "yy");
+
+	//PrintUserVariables(ls);
 	char* bytecode = 0L;
 	size_t bytecode_len = 0;
 	BS_DESCRIP bd = { &bytecode_len, &bytecode };
 
-	int err = luaL_loadstring(ls, pLuaText);
-	err = lua_dump(ls, (lua_Writer)scriptMemoryWriter, &bd, 0);
+	err = luaL_loadstring(ls, pLuaText);
+	err = lua_pcall(ls, 0, 1, 0);
+	PrintSysVariables(ls);
 	lua_pop(ls, 1);
-	//err = lua_load(ls, (lua_Reader)reader, &bd, "chunk1", NULL);
+
+	int blah = lua_gettop(ls);
+
+
+	err = luaL_loadstring(ls, pLuaText);
+	err = lua_dump(ls, (lua_Writer)scriptMemoryWriter, &bd, 0);
+	//lua_pop(ls, 1);
+	
+	lua_getglobal(ls, "uservariables");
+	lua_pushnil(ls);
+	while (lua_next(ls, -2) != 0)
+	{
+		const char* varName = lua_tostring(ls, -2);
+		if (strcmp(varName, "x"))
+		{
+			lua_pushnumber(ls, 10);
+		}
+		else
+		{
+			lua_pushnumber(ls, 1);
+		}
+
+		lua_setglobal(ls, varName);
+		lua_pop(ls, 1);
+	}
+	lua_pop(ls, 1);
+
+	err = luaL_dostring(ls, "uservariables = nil");
+	err = luaL_dostring(ls, userVars);
+	//PrintSysVariables(ls);
 	err = luaL_loadbuffer(ls, bytecode, bytecode_len, "somename");
 
+	err = lua_pcall(ls, 0, /*LUA_MULTRET*/1, 0);
+	//PrintSysVariables(ls);
 	int t = lua_gettop(ls);
 
+	double calc = lua_tonumber(ls, -1);
+	
+
+	//err = luaL_loadstring(ls, pLuaText);
+	PrintSysVariables(ls);
 
 	//luaL_loadbuffer(ls, pLuaByteCode, sizeof(pLuaByteCode), "blah");
 	lua_pushnumber(ls, 5);
@@ -295,12 +394,8 @@ int CALLBACK CompareFunc(LPARAM lParam1, LPARAM lParam2, LPARAM lParamSort)
 			f2 = true;
 			return wcscmp(p2->second, p1->second);
 		}
-
 	}
-
-
-
-}
+ }
 
 LRESULT CALLBACK ListViewProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
 {
